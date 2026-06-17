@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Printer } from "lucide-react";
+import { Printer, Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -18,18 +18,30 @@ export function TablesPanel() {
     onSuccess: async () => {
       setLabel("");
       await queryClient.invalidateQueries({ queryKey: ["tables"] });
-    }
+    },
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => api.deleteTable(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["tables"] });
+    },
   });
 
   return (
     <PanelShell>
       <div className="mb-5">
         <h1 className="text-2xl font-bold">Masalar & QR</h1>
-        <p className="text-sm text-muted-foreground">Masa ekle, QR kodu indir veya yazdır.</p>
+        <p className="text-sm text-muted-foreground">
+          Masa ekle, QR kodu indir veya yazdır.
+        </p>
       </div>
       <Card className="mb-4">
         <CardContent className="flex gap-2 pt-5">
-          <Input placeholder="Masa 6" value={label} onChange={(event) => setLabel(event.target.value)} />
+          <Input
+            placeholder="Masa 6"
+            value={label}
+            onChange={(event) => setLabel(event.target.value)}
+          />
           <Button disabled={!label} onClick={() => create.mutate()}>
             Ekle
           </Button>
@@ -43,7 +55,11 @@ export function TablesPanel() {
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={`${API_BASE}/tables/${table.id}/qr`} alt={`${table.label} QR`} className="aspect-square w-full rounded-md bg-white" />
+              <img
+                src={`${API_BASE}/tables/${table.id}/qr`}
+                alt={`${table.label} QR`}
+                className="aspect-square w-full rounded-md bg-white"
+              />
               <div className="flex gap-2">
                 <a
                   className="focus-ring inline-flex h-10 flex-1 items-center justify-center rounded-md border border-border text-sm font-semibold"
@@ -55,10 +71,21 @@ export function TablesPanel() {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => window.open(`${API_BASE}/tables/${table.id}/qr`, "_blank")}
+                  onClick={() =>
+                    window.open(`${API_BASE}/tables/${table.id}/qr`, "_blank")
+                  }
                   aria-label="Yazdır"
                 >
                   <Printer data-icon="inline-start" />
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  disabled={remove.isPending}
+                  onClick={() => remove.mutate(table.id)}
+                  aria-label="Masa sil"
+                >
+                  <Trash2 data-icon="inline-start" />
                 </Button>
               </div>
             </CardContent>
@@ -68,4 +95,3 @@ export function TablesPanel() {
     </PanelShell>
   );
 }
-

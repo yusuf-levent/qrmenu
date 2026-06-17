@@ -1,29 +1,33 @@
 import {
+  ConnectedSocket,
   MessageBody,
   SubscribeMessage,
   WebSocketGateway,
-  WebSocketServer
+  WebSocketServer,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 
 @WebSocketGateway({
   cors: {
     origin: process.env.WEB_ORIGIN ?? "http://localhost:3000",
-    credentials: true
-  }
+    credentials: true,
+  },
 })
 export class OrdersGateway {
   @WebSocketServer()
   server!: Server;
 
   @SubscribeMessage("joinBusiness")
-  joinBusiness(client: Socket, @MessageBody() businessId: string) {
+  joinBusiness(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() businessId: string,
+  ) {
     client.join(`business:${businessId}`);
     return { ok: true };
   }
 
   @SubscribeMessage("joinOrder")
-  joinOrder(client: Socket, @MessageBody() orderId: string) {
+  joinOrder(@ConnectedSocket() client: Socket, @MessageBody() orderId: string) {
     client.join(`order:${orderId}`);
     return { ok: true };
   }
@@ -38,4 +42,3 @@ export class OrdersGateway {
     this.server.to(`order:${order.id}`).emit("order:updated", order);
   }
 }
-

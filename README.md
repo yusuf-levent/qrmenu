@@ -74,13 +74,15 @@ Panel demo hesabi:
 1. `http://localhost:3001/m/test-kafe` adresini ac.
 2. Bir veya birkac urun ekle, `Sepete git` butonuna bas.
 3. Siparis tipini sec, `Siparisi onayla` ile odeme ekranina gec.
-4. `Tek ode` veya `Hesabi bol` ile mock odeme yap.
-5. `Siparisi takip et` baglantisiyla canli takip ekranini gor.
-6. Ayri sekmede `http://localhost:3001/panel/login` adresine gir.
-7. Demo hesapla oturum ac, `Canli Siparisler` ekraninda siparisi sonraki durumlara gecir.
-8. `Masalar & QR` ekraninda QR PNG goruntule, indir veya yazdir.
-9. `Menu Yonetimi` ekraninda kategori/urun ekle, stok ac/kapat, urun sil.
-10. `Rapor` ekraninda gunluk/haftalik ozet ve en cok satan urun grafigini gor.
+4. Urun videosu olan kartta oynat simgesine basarak tam ekran video oynaticiyi kontrol et.
+5. `Tek ode`, `Esit bol` veya `Kalem ata` secenekleriyle mock odeme yap.
+6. `Siparisi takip et` baglantisiyla canli takip ekranini gor.
+7. Ayri sekmede `http://localhost:3001/panel/login` adresine gir.
+8. Demo hesapla oturum ac, `Canli Siparisler` ekraninda siparisi sonraki durumlara gecir.
+9. Yeni siparis geldiginde paneldeki gorsel uyariyi ve sesli bildirimi kontrol et.
+10. `Masalar & QR` ekraninda QR PNG goruntule, indir, yazdir veya masa sil.
+11. `Menu Yonetimi` ekraninda kategori ekle/duzenle/sirala/sil; urun ekle/duzenle, fotograf yukle, stok ac/kapat veya urun sil.
+12. `Rapor` ekraninda gunluk/haftalik ozet ve en cok satan urun grafigini gor.
 
 ## Guvenlik Kontrol Listesi
 
@@ -103,6 +105,7 @@ Panel demo hesabi:
 corepack pnpm build
 corepack pnpm lint
 corepack pnpm test
+corepack pnpm e2e
 ```
 
 Not: Windows'ta Prisma dosya kilidi olmamasi icin build/test oncesi calisan dev sunucularini kapatmak daha sagliklidir.

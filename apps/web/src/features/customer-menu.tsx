@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Play, Plus, X } from "lucide-react";
 import type { PublicMenuItem, PublicMenuResponse } from "@qrmenu/types";
@@ -10,21 +10,55 @@ import { api, imageUrl } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/form";
-import { cartCount, cartTotal, readCart, upsertCartItem, writeCart } from "./cart-store";
+import {
+  cartCount,
+  cartTotal,
+  readCart,
+  upsertCartItem,
+  writeCart,
+} from "./cart-store";
 
-export function CustomerMenu({ mode, value }: { mode: "slug" | "table"; value: string }) {
+export function CustomerMenu({
+  mode,
+  value,
+}: {
+  mode: "slug" | "table";
+  value: string;
+}) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<PublicMenuItem | null>(null);
+  const [videoItem, setVideoItem] = useState<PublicMenuItem | null>(null);
   const [cart, setCart] = useState(readCart);
   const [showBanner, setShowBanner] = useState(true);
 
   const query = useQuery({
     queryKey: ["public-menu", mode, value],
-    queryFn: () => (mode === "slug" ? api.publicMenuBySlug(value) : api.publicMenuByTable(value))
+    queryFn: () =>
+      mode === "slug"
+        ? api.publicMenuBySlug(value)
+        : api.publicMenuByTable(value),
   });
 
   const data = query.data;
   const activeCategory = selectedCategory ?? data?.categories[0]?.id ?? null;
+
+  useEffect(() => {
+    if (!data) {
+      return;
+    }
+    setCart((current) => {
+      const validCart = current.filter(
+        (item) =>
+          item.businessId === data.business.id &&
+          item.businessSlug === data.business.slug &&
+          item.quantity > 0,
+      );
+      if (validCart.length !== current.length) {
+        writeCart(validCart);
+      }
+      return validCart;
+    });
+  }, [data]);
 
   function addToCart(item: PublicMenuItem, quantity = 1, note = "") {
     if (!data) {
@@ -35,11 +69,12 @@ export function CustomerMenu({ mode, value }: { mode: "slug" | "table"; value: s
       item,
       {
         businessId: data.business.id,
+        businessSlug: data.business.slug,
         tableId: data.table?.id ?? null,
-        tableLabel: data.table?.label ?? null
+        tableLabel: data.table?.label ?? null,
       },
       quantity,
-      note
+      note,
     );
     setCart(next);
     writeCart(next);
@@ -61,7 +96,9 @@ export function CustomerMenu({ mode, value }: { mode: "slug" | "table"; value: s
             <button
               key={category.id}
               className={`focus-ring shrink-0 rounded-md px-3 py-2 text-sm font-semibold ${
-                activeCategory === category.id ? "bg-primary text-primary-foreground" : "bg-muted"
+                activeCategory === category.id
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted"
               }`}
               onClick={() => setSelectedCategory(category.id)}
             >
@@ -79,12 +116,17 @@ export function CustomerMenu({ mode, value }: { mode: "slug" | "table"; value: s
                 item={item}
                 onAdd={() => addToCart(item)}
                 onOpen={() => setSelectedItem(item)}
+                onVideo={() => setVideoItem(item)}
               />
             ))}
         </div>
         {showBanner ? (
           <div className="mx-4 mb-24 rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-900">
-            <button className="float-right" aria-label="Banner kapat" onClick={() => setShowBanner(false)}>
+            <button
+              className="float-right"
+              aria-label="Banner kapat"
+              onClick={() => setShowBanner(false)}
+            >
               <X size={16} />
             </button>
             Puan kazan, daha hızlı sipariş ver → Uygulamayı indir
@@ -102,6 +144,9 @@ export function CustomerMenu({ mode, value }: { mode: "slug" | "table"; value: s
           }}
         />
       ) : null}
+      {videoItem ? (
+        <VideoPlayer item={videoItem} onClose={() => setVideoItem(null)} />
+      ) : null}
     </main>
   );
 }
@@ -109,7 +154,9 @@ export function CustomerMenu({ mode, value }: { mode: "slug" | "table"; value: s
 function MenuShell({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted p-6">
-      <div className="rounded-lg bg-white p-6 text-sm text-muted-foreground">{children}</div>
+      <div className="rounded-lg bg-white p-6 text-sm text-muted-foreground">
+        {children}
+      </div>
     </main>
   );
 }
@@ -131,7 +178,9 @@ function MenuHeader({ data }: { data: PublicMenuResponse }) {
       )}
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-xl font-bold">{data.business.name}</h1>
-        <p className="truncate text-sm text-muted-foreground">{data.business.address ?? "QR menü"}</p>
+        <p className="truncate text-sm text-muted-foreground">
+          {data.business.address ?? "QR menü"}
+        </p>
       </div>
       {data.table ? <Badge tone="green">{data.table.label}</Badge> : null}
     </header>
@@ -141,20 +190,36 @@ function MenuHeader({ data }: { data: PublicMenuResponse }) {
 function ProductRow({
   item,
   onAdd,
-  onOpen
+  onOpen,
+  onVideo,
 }: {
   item: PublicMenuItem;
   onAdd: () => void;
   onOpen: () => void;
+  onVideo: () => void;
 }) {
   return (
     <article className="grid grid-cols-[72px_1fr_auto] items-center gap-3 rounded-lg border border-border p-3">
-      <button className="relative overflow-hidden rounded-md bg-muted" onClick={onOpen}>
+      <button
+        className="relative overflow-hidden rounded-md bg-muted"
+        onClick={item.videoUrl ? onVideo : onOpen}
+        aria-label={
+          item.videoUrl
+            ? `${item.name} videosunu aç`
+            : `${item.name} detayını aç`
+        }
+      >
         {item.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl(item.imageUrl) ?? ""} alt={item.name} className="size-[72px] object-cover" />
+          <img
+            src={imageUrl(item.imageUrl) ?? ""}
+            alt={item.name}
+            className="size-[72px] object-cover"
+          />
         ) : (
-          <div className="grid size-[72px] place-items-center text-xs text-muted-foreground">Görsel</div>
+          <div className="grid size-[72px] place-items-center text-xs text-muted-foreground">
+            Görsel
+          </div>
         )}
         {item.videoUrl ? (
           <span className="absolute inset-0 grid place-items-center bg-black/20 text-white">
@@ -164,13 +229,58 @@ function ProductRow({
       </button>
       <button className="min-w-0 text-left" onClick={onOpen}>
         <h2 className="truncate text-sm font-semibold">{item.name}</h2>
-        <p className="truncate text-sm text-muted-foreground">{item.description ?? "Açıklama yok"}</p>
+        <p className="truncate text-sm text-muted-foreground">
+          {item.description ?? "Açıklama yok"}
+        </p>
         <p className="mt-1 text-sm font-bold">{formatKurus(item.priceKurus)}</p>
       </button>
       <Button size="icon" onClick={onAdd} aria-label={`${item.name} ekle`}>
         <Plus data-icon="inline-start" />
       </Button>
     </article>
+  );
+}
+
+function VideoPlayer({
+  item,
+  onClose,
+}: {
+  item: PublicMenuItem;
+  onClose: () => void;
+}) {
+  if (!item.videoUrl) {
+    return null;
+  }
+  return (
+    <div className="fixed inset-0 z-40 grid bg-black p-4 text-white">
+      <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm text-white/70">Ürün videosu</p>
+            <h2 className="text-xl font-bold">{item.name}</h2>
+          </div>
+          <button
+            className="focus-ring rounded-md bg-white/10 p-2"
+            onClick={onClose}
+            aria-label="Videoyu kapat"
+          >
+            <X size={22} />
+          </button>
+        </div>
+        <video
+          src={item.videoUrl}
+          controls
+          autoPlay
+          muted
+          playsInline
+          className="min-h-0 flex-1 rounded-lg bg-black object-contain"
+        />
+        <p className="text-sm text-white/70">
+          Video sessiz başlar; sesi açmak için oynatıcıdaki ses kontrolünü
+          kullan.
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -195,7 +305,7 @@ function CartBar({ count, total }: { count: number; total: number }) {
 function ProductSheet({
   item,
   onClose,
-  onAdd
+  onAdd,
 }: {
   item: PublicMenuItem;
   onClose: () => void;
@@ -203,34 +313,60 @@ function ProductSheet({
 }) {
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
-  const total = useMemo(() => item.priceKurus * quantity, [item.priceKurus, quantity]);
+  const total = useMemo(
+    () => item.priceKurus * quantity,
+    [item.priceKurus, quantity],
+  );
   return (
     <div className="fixed inset-0 z-30 flex items-end bg-black/30 p-0 sm:items-center sm:justify-center sm:p-6">
       <section className="max-h-[92vh] w-full overflow-auto rounded-t-lg bg-white sm:max-w-lg sm:rounded-lg">
         {item.videoUrl ? (
-          <video src={item.videoUrl} controls muted className="aspect-video w-full bg-black object-cover" />
+          <video
+            src={item.videoUrl}
+            controls
+            muted
+            className="aspect-video w-full bg-black object-cover"
+          />
         ) : item.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl(item.imageUrl) ?? ""} alt={item.name} className="aspect-video w-full object-cover" />
+          <img
+            src={imageUrl(item.imageUrl) ?? ""}
+            alt={item.name}
+            className="aspect-video w-full object-cover"
+          />
         ) : null}
         <div className="flex flex-col gap-4 p-5">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold">{item.name}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {item.description}
+              </p>
             </div>
-            <button className="focus-ring rounded-md p-2" onClick={onClose} aria-label="Kapat">
+            <button
+              className="focus-ring rounded-md p-2"
+              onClick={onClose}
+              aria-label="Kapat"
+            >
               <X size={20} />
             </button>
           </div>
           <div className="flex items-center justify-between">
             <p className="font-bold">{formatKurus(item.priceKurus)}</p>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+              >
                 -
               </Button>
               <span className="w-8 text-center font-semibold">{quantity}</span>
-              <Button variant="outline" size="icon" onClick={() => setQuantity(quantity + 1)}>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setQuantity(quantity + 1)}
+              >
                 +
               </Button>
             </div>

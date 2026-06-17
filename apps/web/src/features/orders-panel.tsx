@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
-import { formatKurus, nextStatusByStatus, type OrderStatus } from "@qrmenu/types";
+import {
+  formatKurus,
+  nextStatusByStatus,
+  type OrderStatus,
+} from "@qrmenu/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiOrder, SOCKET_URL } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
@@ -17,16 +21,23 @@ const labels: Record<OrderStatus, string> = {
   PREPARING: "Hazırlanıyor",
   READY: "Hazır",
   COMPLETED: "Tamamlandı",
-  CANCELLED: "İptal"
+  CANCELLED: "İptal",
 };
 
 export function OrdersPanel() {
   const queryClient = useQueryClient();
+  const [newOrderNotice, setNewOrderNotice] = useState<string | null>(null);
   const me = useQuery({ queryKey: ["me"], queryFn: api.me, retry: false });
-  const orders = useQuery({ queryKey: ["orders"], queryFn: api.orders, enabled: Boolean(me.data) });
+  const orders = useQuery({
+    queryKey: ["orders"],
+    queryFn: api.orders,
+    enabled: Boolean(me.data),
+  });
   const mutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: OrderStatus }) => api.updateOrderStatus(id, status),
-    onSuccess: async () => queryClient.invalidateQueries({ queryKey: ["orders"] })
+    mutationFn: ({ id, status }: { id: string; status: OrderStatus }) =>
+      api.updateOrderStatus(id, status),
+    onSuccess: async () =>
+      queryClient.invalidateQueries({ queryKey: ["orders"] }),
   });
 
   useEffect(() => {
@@ -37,6 +48,7 @@ export function OrdersPanel() {
     socket.emit("joinBusiness", me.data.business.id);
     socket.on("order:created", () => {
       void queryClient.invalidateQueries({ queryKey: ["orders"] });
+      setNewOrderNotice("Yeni sipariş geldi. Liste güncellendi.");
       playBeep();
     });
     socket.on("order:updated", () => {
@@ -46,6 +58,14 @@ export function OrdersPanel() {
       socket.disconnect();
     };
   }, [me.data?.business.id, queryClient]);
+
+  useEffect(() => {
+    if (!newOrderNotice) {
+      return;
+    }
+    const timeout = window.setTimeout(() => setNewOrderNotice(null), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [newOrderNotice]);
 
   if (me.error) {
     return (
@@ -65,15 +85,25 @@ export function OrdersPanel() {
     <PanelShell>
       <div className="mb-5">
         <h1 className="text-2xl font-bold">Canlı Siparişler</h1>
-        <p className="text-sm text-muted-foreground">Yeni siparişler bu ekrana otomatik düşer.</p>
+        <p className="text-sm text-muted-foreground">
+          Yeni siparişler bu ekrana otomatik düşer.
+        </p>
       </div>
+      {newOrderNotice ? (
+        <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">
+          {newOrderNotice}
+        </div>
+      ) : null}
       <div className="grid gap-4 lg:grid-cols-4">
         {lanes.map((lane) => (
           <Card key={lane} className="min-h-96">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 {labels[lane]}
-                <Badge>{orders.data?.filter((order) => order.status === lane).length ?? 0}</Badge>
+                <Badge>
+                  {orders.data?.filter((order) => order.status === lane)
+                    .length ?? 0}
+                </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
@@ -83,7 +113,9 @@ export function OrdersPanel() {
                   <OrderCard
                     key={order.id}
                     order={order}
-                    onNext={(status) => mutation.mutate({ id: order.id, status })}
+                    onNext={(status) =>
+                      mutation.mutate({ id: order.id, status })
+                    }
                   />
                 ))}
             </CardContent>
@@ -94,16 +126,26 @@ export function OrdersPanel() {
   );
 }
 
-function OrderCard({ order, onNext }: { order: ApiOrder; onNext: (status: OrderStatus) => void }) {
+function OrderCard({
+  order,
+  onNext,
+}: {
+  order: ApiOrder;
+  onNext: (status: OrderStatus) => void;
+}) {
   const next = nextStatusByStatus[order.status];
   return (
     <article className="rounded-lg border border-border bg-white p-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-semibold">{order.table?.label ?? "Gel-Al"}</p>
-          <p className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleTimeString("tr-TR")}</p>
+          <p className="text-xs text-muted-foreground">
+            {new Date(order.createdAt).toLocaleTimeString("tr-TR")}
+          </p>
         </div>
-        <Badge tone={order.type === "DINE_IN" ? "green" : "amber"}>{order.type === "DINE_IN" ? "Masa" : "Gel-Al"}</Badge>
+        <Badge tone={order.type === "DINE_IN" ? "green" : "amber"}>
+          {order.type === "DINE_IN" ? "Masa" : "Gel-Al"}
+        </Badge>
       </div>
       <ul className="mt-3 grid gap-1 text-sm">
         {order.items.map((item) => (
@@ -148,4 +190,3 @@ declare global {
     webkitAudioContext?: typeof AudioContext;
   }
 }
-

@@ -8,7 +8,16 @@ if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
   $pnpm = "pnpm"
 }
 
-Invoke-Expression "$pnpm build"
-Invoke-Expression "$pnpm lint"
-Invoke-Expression "$pnpm test"
+function Invoke-Checked {
+  param([string]$Command)
 
+  Invoke-Expression $Command
+  if ($LASTEXITCODE -ne 0) {
+    throw "Command failed with exit code ${LASTEXITCODE}: $Command"
+  }
+}
+
+Invoke-Checked "$pnpm build"
+Invoke-Checked "$pnpm lint"
+Invoke-Checked "$pnpm test"
+Invoke-Checked "$pnpm e2e"

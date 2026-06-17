@@ -9,9 +9,11 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "turbo test",
+    "e2e": "docker compose up -d && pnpm --filter api prisma migrate dev && pnpm --filter api prisma db seed && playwright test",
     "format": "prettier --write ."
   },
   "devDependencies": {
+    "@playwright/test": "1.51.1",
     "@types/node": "^24.10.1",
     "@typescript-eslint/eslint-plugin": "^8.49.0",
     "@typescript-eslint/parser": "^8.49.0",

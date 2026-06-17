@@ -5,6 +5,7 @@ import type { PublicMenuItem } from "@qrmenu/types";
 export type CartItem = {
   menuItemId: string;
   businessId: string;
+  businessSlug: string;
   tableId: string | null;
   tableLabel: string | null;
   name: string;
@@ -43,14 +44,23 @@ export function clearCart() {
 export function upsertCartItem(
   cart: CartItem[],
   item: PublicMenuItem,
-  context: { businessId: string; tableId: string | null; tableLabel: string | null },
+  context: {
+    businessId: string;
+    businessSlug: string;
+    tableId: string | null;
+    tableLabel: string | null;
+  },
   quantity: number,
-  note: string
+  note: string,
 ): CartItem[] {
-  const existing = cart.find((cartItem) => cartItem.menuItemId === item.id && cartItem.note === note);
+  const existing = cart.find(
+    (cartItem) => cartItem.menuItemId === item.id && cartItem.note === note,
+  );
   if (existing) {
     return cart.map((cartItem) =>
-      cartItem === existing ? { ...cartItem, quantity: cartItem.quantity + quantity } : cartItem
+      cartItem === existing
+        ? { ...cartItem, quantity: cartItem.quantity + quantity }
+        : cartItem,
     );
   }
   return [
@@ -58,14 +68,15 @@ export function upsertCartItem(
     {
       menuItemId: item.id,
       businessId: context.businessId,
+      businessSlug: context.businessSlug,
       tableId: context.tableId,
       tableLabel: context.tableLabel,
       name: item.name,
       priceKurus: item.priceKurus,
       imageUrl: item.imageUrl,
       quantity,
-      note
-    }
+      note,
+    },
   ];
 }
 
@@ -76,4 +87,3 @@ export function cartTotal(cart: CartItem[]) {
 export function cartCount(cart: CartItem[]) {
   return cart.reduce((sum, item) => sum + item.quantity, 0);
 }
-

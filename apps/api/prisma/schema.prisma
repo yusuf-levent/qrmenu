@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  STAFF
+}
+
+enum OrderType {
+  DINE_IN
+  PICKUP
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+enum PaymentProvider {
+  MOCK
+}
+
+model Business {
+  id         String     @id @default(cuid())
+  name       String
+  slug       String     @unique
+  logoUrl    String?
+  address    String?
+  phone      String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  users      User[]
+  categories Category[]
+  menuItems  MenuItem[]
+  tables     Table[]
+  orders     Order[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role
+  businessId   String
+  createdAt    DateTime @default(now())
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model Customer {
+  id            String   @id @default(cuid())
+  phone         String   @unique
+  name          String?
+  loyaltyPoints Int      @default(0)
+  createdAt     DateTime @default(now())
+  orders        Order[]
+}
+
+model Category {
+  id         String     @id @default(cuid())
+  businessId String
+  name       String
+  sortOrder  Int
+  createdAt  DateTime   @default(now())
+  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  menuItems  MenuItem[]
+}
+
+model MenuItem {
+  id          String      @id @default(cuid())
+  businessId  String
+  categoryId  String
+  name        String
+  description String?
+  priceKurus  Int
+  imageUrl    String?
+  videoUrl    String?
+  isAvailable Boolean     @default(true)
+  sortOrder   Int
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  business    Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category    Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+}
+
+model Table {
+  id         String   @id @default(cuid())
+  businessId String
+  label      String
+  qrToken    String   @unique
+  createdAt  DateTime @default(now())
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orders     Order[]
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  businessId  String
+  tableId     String?
+  customerId  String?
+  type        OrderType
+  status      OrderStatus @default(PENDING)
+  totalKurus  Int
+  note        String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  business    Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  table       Table?      @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  customer    Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items       OrderItem[]
+  payments    Payment[]
+}
+
+model OrderItem {
+  id                 String   @id @default(cuid())
+  orderId            String
+  menuItemId          String
+  nameSnapshot        String
+  priceKurusSnapshot  Int
+  quantity            Int
+  note                String?
+  order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem            MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict)
+}
+
+model Payment {
+  id          String          @id @default(cuid())
+  orderId     String
+  amountKurus Int
+  status      PaymentStatus
+  splitGroupId String?
+  payerLabel  String?
+  provider    PaymentProvider
+  createdAt   DateTime        @default(now())
+  order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+

@@ -1,0 +1,12 @@
+{
+  "name": "@qrmenu/config",
+  "version": "0.1.0",
+  "private": true,
+  "files": ["tsconfig"],
+  "scripts": {
+    "build": "echo config-ready",
+    "lint": "echo config-ready",
+    "test": "echo config-ready"
+  }
+}
+
